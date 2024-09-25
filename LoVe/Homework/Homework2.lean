@@ -32,17 +32,28 @@ Think about the similarity to the type inhabitation problems of HW1!
 -/
 
 @[autogradedProof 1] theorem B (a b c : Prop) :
-  (a → b) → (c → a) → c → b :=
-  sorry
+  (a → b) → (c → a) → c → b := by
+  intro hab hcb hc
+  apply hab
+  apply hcb
+  exact hc
+  done
 
 @[autogradedProof 1] theorem S (a b c : Prop) :
-  (a → b → c) → (a → b) → a → c :=
-  sorry
+  (a → b → c) → (a → b) → a → c := by
+  intro habc hab ha
+  apply habc
+  exact ha
+  exact hab ha
+  done
 
 @[autogradedProof 1] theorem more_nonsense (a b c : Prop) :
-  (c → (a → b) → a) → c → b → a :=
-  sorry
-
+  (c → (a → b) → a) → c → b → a := by
+  intro h_caba h_c h_b
+  apply h_caba h_c
+  intro h_ab
+  apply h_b
+  done
 
 /- For an extra challenge: translate the `weak_peirce` type inhabitation
 problem from HW1 into a theorem statement, and prove the theorem! -/
@@ -63,8 +74,20 @@ Hints:
   for `False` at some point in the proof. -/
 
 @[autogradedProof 1] theorem about_Impl (a b : Prop) :
-  ¬ a ∨ b → a → b :=
-  sorry
+  ¬ a ∨ b → a → b := by
+  rw [Not]
+  intro h_nab h_a
+  apply Or.elim h_nab
+  {
+    intro h_na
+    apply False.elim
+    apply h_na h_a
+  }
+  {
+    intro hb
+    exact hb
+  }
+  done
 
 /- 2.2 (2 points).
 
@@ -111,12 +134,36 @@ Hints:
 #check DoubleNegation
 #check ExcludedMiddle
 
+theorem helper_left (p : Prop) : ¬(p ∨ ¬p) → ¬p := by
+  intro h h_p
+  apply h
+  apply Or.inl h_p
+  done
+
+theorem helper_right (p: Prop) :  ¬(p ∨ ¬p) → ¬¬p  := by
+  intro h h_p
+  apply h
+  apply Or.inr h_p
+  done
+
+theorem helper_right2 (p: Prop) : DoubleNegation → ¬(p ∨ ¬p) → p := by
+  intro dneg h
+  apply dneg
+  apply helper_right
+  exact h
+
 @[autogradedProof 2, validAxioms #[Quot.sound, propext, funext]]
 theorem EM_of_DN :
-  DoubleNegation → ExcludedMiddle :=
-  sorry
-
-
+  DoubleNegation → ExcludedMiddle := by
+  rw [DoubleNegation]
+  rw [ExcludedMiddle]
+  intro dneg
+  intro P
+  apply dneg
+  intro neg
+  apply helper_left P neg
+  apply helper_right2 P dneg neg
+  done
 /-
 
 In this week's lab, you'll have the option to prove a few more implications.
@@ -169,12 +216,18 @@ using `Eq.symm`, `Eq.trans`, or `Eq.subst`. You should not use any tactics
 besides `apply`, `exact`, and `rfl`. -/
 
 @[autogradedProof 1, validAxioms #[LoVe.BackwardProofs.symmtrans]]
-theorem my_symm (h : b = a) : a = b :=
-  sorry
+theorem my_symm (h : b = a) : a = b := by
+  apply symmtrans
+  { rfl }
+  { exact h }
+  done
 
 @[autogradedProof 2, validAxioms #[LoVe.BackwardProofs.symmtrans]]
-theorem my_trans (h1 : a = b) (h2 : b = c) : a = c :=
-  sorry
+theorem my_trans (h1 : a = b) (h2 : b = c) : a = c := by
+  apply symmtrans
+  exact h1
+  apply my_symm h2
+  done
 
 end
 
@@ -217,8 +270,32 @@ definition, you can use `rw`.) -/
 @[autogradedProof 3,
   validAxioms #[LoVe.BackwardProofs.fermats_last_theorem, Quot.sound, propext, funext, Classical.choice]]
 theorem pythagorean_triple_not_all_squares (a b c : ℕ) :
-  IsPythagoreanTriple a b c → ¬(IsSquare a ∧ IsSquare b ∧ IsSquare c) :=
-  sorry
+  IsPythagoreanTriple a b c → ¬(IsSquare a ∧ IsSquare b ∧ IsSquare c) := by
+  rw [IsPythagoreanTriple]
+  intro pytriple
+  intro abc_square
+  apply abc_square.elim
+  rw [IsSquare]
+  intro a_square
+  intro ab_square
+  apply ab_square.elim
+  rw [IsSquare]
+  intro b_square
+  rw [IsSquare]
+  intro c_square
+  cases a_square with
+  | intro x hax =>
+    cases b_square with
+    | intro y hby =>
+      cases c_square with
+      | intro z hcz =>
+        apply fermats_last_theorem x y 4
+        decide
+        apply Exists.intro z
+        apply square_square x y z
+        rw [←hax, ←hby, ←hcz]
+        apply pytriple
+  done
 
 
 end BackwardProofs
