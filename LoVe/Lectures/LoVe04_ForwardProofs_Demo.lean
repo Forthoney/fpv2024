@@ -15,7 +15,6 @@ namespace LoVe
 
 namespace ForwardProofs
 
-
 /- ## Structured Constructs
 
 Structured proofs are syntactic sugar sprinkled on top of Lean's
@@ -279,18 +278,6 @@ def depFun : (n : ℕ) → {i : ℕ // i ≤ n} :=
 fun n => ⟨0, by linarith⟩
 
 
-/- Example of a term that depends on a term: -/
-
-
-/- Example of a term that depends on a type: -/
-
-
-/- Example of a type that depends on a type: -/
-
-
-
-
-
 /-
 In summary, there are four cases for `fun x ↦ t` in the calculus of inductive
 constructions (cf. Barendregt's `λ`-cube):
@@ -398,7 +385,16 @@ theorem And_swap_tactical (a b : Prop) :
 
 /-
 
-We talked about the "type tower":
+In "normal" programming languages, there's a strict distinction between
+*terms* and *types*.
+
+In dependent type theory, *everything* is a term, including types.
+Every term has a type, which is itself a term, which has a type, ...
+
+
+
+
+There's a hierarchy of type universes:
 
 -/
 
