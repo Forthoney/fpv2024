@@ -45,7 +45,12 @@ Hint: There's an easy way and a hard way. Anything goes. -/
 
 @[autogradedProof 1] theorem about_Impl_term :
   ∀a b : Prop, ¬ a ∨ b → a → b :=
-  sorry
+  fun a b : Prop =>
+    fun hor : ¬ a ∨ b =>
+      fun ha : a =>
+        Or.elim hor
+          (fun hna : ¬a => show b from False.elim (hna ha))
+          (fun hb : b => show b from hb)
 
 /- ### 1.2 (2 points).
 
@@ -54,7 +59,7 @@ structured proof, with `fix`, `assume`, and `show`. -/
 
 @[autogradedProof 2] theorem about_Impl_struct :
   ∀a b : Prop, ¬ a ∨ b → a → b :=
-    fix a b : Prop
+  fix a b : Prop
   assume hor : ¬ a ∨ b
   assume ha : a
   Or.elim hor
