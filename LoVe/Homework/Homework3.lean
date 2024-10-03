@@ -54,7 +54,18 @@ structured proof, with `fix`, `assume`, and `show`. -/
 
 @[autogradedProof 2] theorem about_Impl_struct :
   ∀a b : Prop, ¬ a ∨ b → a → b :=
-  sorry
+    fix a b : Prop
+  assume hor : ¬ a ∨ b
+  assume ha : a
+  Or.elim hor
+    (
+      assume hna : ¬a
+      show b from False.elim (hna ha)
+    )
+    (
+      assume hb : b
+      show b from hb
+    )
 
 /-
 ### 1.3 (2 points).
@@ -64,8 +75,20 @@ no `Classical.em` or `Classical.byContradiction`.
 -/
 
 @[autogradedProof 2]
-lemma not_iff_not_self (P : Prop) : ¬ (P ↔ ¬ P) :=
- sorry
+lemma not_iff_not_self (P : Prop) : ¬ (P ↔ ¬ P) := by
+  intro h
+  exact
+    have hp : P := by
+      apply Iff.mpr h
+      intro hp
+      exact Iff.mp h hp hp
+    have hnp : ¬ P := by
+      apply Iff.mp h
+      exact hp
+    show False from
+     hnp hp
+
+
 
 
 example (Q : Prop) : ¬ (Q ↔ ¬ Q) :=
@@ -91,7 +114,12 @@ section
 
   -- Show the following:
   @[autogradedProof 1] theorem false_of_barber : False :=
-   sorry
+    have hbarber: ¬(shaves barber barber ↔ ¬shaves barber barber) :=
+      not_iff_not_self (shaves barber barber)
+    have hbarber': shaves barber barber ↔ ¬shaves barber barber :=
+      h barber
+    show False from
+      hbarber hbarber'
 end
 
 
@@ -104,7 +132,33 @@ rules for `∀`, `∨`, and `↔`. -/
 
 @[autogradedProof 3] theorem Or_comm_under_All {α : Type} (p q : α → Prop) :
   (∀x, p x ∨ q x) ↔ (∀x, q x ∨ p x) :=
-  sorry
+  have hl : (∀x, p x ∨ q x) → (∀x, q x ∨ p x) :=
+    assume hll : (∀x, p x ∨ q x)
+    fix x : α
+    Or.elim (hll x)
+    (
+      assume hpx : p x
+      Or.inr hpx
+    )
+    (
+      assume hqx : q x
+      Or.inl hqx
+    )
+
+  have hr : (∀x, q x ∨ p x) → (∀x, p x ∨ q x) :=
+    assume hrl : (∀x, q x ∨ p x)
+    fix x : α
+    Or.elim (hrl x)
+    (
+      assume hqx : q x
+      Or.inr hqx
+    )
+    (
+      assume hpx : p x
+      Or.inl hpx
+    )
+
+  show (∀x, p x ∨ q x) ↔ (∀x, q x ∨ p x) from Iff.intro hl hr
 
 
 namespace Quasicontractibility
@@ -141,8 +195,9 @@ isomorphism.") -/
 
 /-
 Write your answer to part 1 here.
+Unit, Empty
+The Unit type has one element, and the Empty type has no elements
 -/
-
 
 /-! The next item will make use of the *associativity* and *injectivity*
 properties of certain binary operations (i.e., binary functions).
@@ -179,10 +234,34 @@ It turns out that we can always define an associative,
 injective function on any quasicontractible type. Write a *forward proof* of
 this fact below. -/
 
+def fn {α : Type} : α → α → α :=
+  fun a ↦ fun _ ↦ a
+
 @[autogradedProof 2]
 theorem exists_assoc_inj_of_quasicontractible {α : Type} :
   Quasicontractible α → ∃ f : α → α → α, Associative f ∧ Injective₂ f :=
-sorry
+  assume hq : Quasicontractible α
+  Exists.intro fn
+  (
+    have hass : Associative fn :=
+      fix x y z: α
+      have hsame : x = y := hq x y
+      have hass₁ : fn (fn x y) z = x :=
+        hq (fn (fn x y) z) x
+      have hass₂ : x = fn x (fn y z) := hq x (fn x (fn y z))
+      Eq.trans hass₁ hass₂
+
+    have hinj: Injective₂ fn :=
+      fix x y x' y': α
+      assume hfnsame : fn x y = fn x' y'
+      have hxsame : x = x' := hq x x'
+      have hysame : y = y' := hq y y'
+      show x = x' ∧ y = y' from And.intro hxsame hysame
+
+    show Associative fn ∧ Injective₂ fn from
+      And.intro hass hinj
+  )
+
 
 /-! In fact, it turns out that functions that are both injective and associative
 *only* exist on quasicontractible types! That is, if there exists an
@@ -215,8 +294,25 @@ to `hassoc : ∀ a b c : α, f (f a b) c = f a (f b c)`.
 
 @[autogradedProof 2]
 theorem quasicontractible_of_exists_assoc_inj {α : Type} :
-  (∃ f : α → α → α, Associative f ∧ Injective₂ f) → Quasicontractible α :=
-sorry
+  (∃ f : α → α → α, Associative f ∧ Injective₂ f) → Quasicontractible α := by
+  intro hfexist
+  unfold Quasicontractible
+  apply Exists.elim hfexist
+  intro f
+  apply And.elim
+  intro hass hinj a b
+  unfold Associative at hass
+  unfold Injective₂ at hinj
+  have hab : a = b ∧ b = a := by
+    have heq : f a b = f b a := by
+      have heq' : (f a b) = a ∧ a = (f b a) :=
+        hinj (f a b) a a (f b a) (hass a b a)
+      have heq_l : f a b = a := And.left heq'
+      have heq_r : a = f b a := And.right heq'
+      apply Eq.trans heq_l heq_r
+
+    apply hinj a b b a heq
+  exact And.left hab
 
 /-! 3.4 (1 point). Using `quasicontractible_of_exists_assoc_inj`, prove that
 there exists no associative, injective binary operation on the natural numbers.
@@ -226,10 +322,17 @@ will be required.
 Hint: try to get an obviously false statement in your context, then use the
 `contradiction` tactic to discharge your goal. Your proof should be short! -/
 
+theorem nat_not_quasi: ¬ Quasicontractible ℕ := by
+  intro hq
+  have h_false : 0 = 1 := hq 0 1
+  contradiction
+
 @[autogradedProof 1]
 theorem no_inj_assoc_on_nats :
-  ¬∃ f : Nat → Nat → Nat, Associative f ∧ Injective₂ f :=
-sorry
+  ¬∃ f : Nat → Nat → Nat, Associative f ∧ Injective₂ f := by
+  intro hexist
+  have hq: Quasicontractible ℕ := quasicontractible_of_exists_assoc_inj hexist
+  exact nat_not_quasi hq
 
 end Quasicontractibility
 
