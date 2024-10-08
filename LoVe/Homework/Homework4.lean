@@ -216,8 +216,23 @@ Show that if a function is both commutative and associative,
 then it is left-commutative. -/
 
 @[autogradedProof 1] theorem leftCommutative_of_commutative_associative {α : Type} :
-  ∀ (f : α → α → α), Commutative f ∧ Associative f → LeftCommutative f :=
-  sorry
+  ∀ (f : α → α → α), Commutative f ∧ Associative f → LeftCommutative f := by
+  intro f hf
+  have hcomm : Commutative f := And.left hf
+
+  rw [LeftCommutative]
+  intro a a' b
+  let c := f a b
+  have h1: f a' (f a b) = f (f a b) a' := by
+    have h1': f a' (f a b) = f a' c := rfl
+    have h1'': f (f a b) a' = f c a' := rfl
+    have h1''': f a' c = f c a' := hcomm a' c
+    exact hcomm a' (f a b)
+  
+  done
+
+
+
 
 /-
 ### 2.2 (4 points).
