@@ -103,7 +103,7 @@ def f : Nat → Nat := fun x => x * x
 Write an `#eval` statement with dot notation achieving the
 same effect as the above. Check that they output the same values. -/
 
--- write your solution here
+#eval xs.map f
 
 end
 
@@ -116,8 +116,7 @@ Define the function `List.mySum` that sums the elements of a
 `List ℕ`, using dot notation where applicable. -/
 
 @[autogradedDef 1, validTactics #[rfl, simp [List.mySum]]]
-def List.mySum : List ℕ → ℕ
-:= sorry
+def List.mySum : List ℕ → ℕ := foldl Nat.add 0
 
 namespace LoVe
 
@@ -127,6 +126,7 @@ Write an `#eval` statement using dot notation that achieves
 the same effect as the one below: -/
 
 #eval List.mySum [1, 2, 3, 4]  -- 10
+#eval [1, 2, 3, 4].mySum
 -- write your solution here
 
 
@@ -140,8 +140,10 @@ Write as short of a term mode proof as you can of the
 following lemma, using dot notation at least once:
 -/
 
-lemma dotAndSwap (P Q R : Prop) (hpq : P ∧ Q ∧ R) : Q ∧ P :=
-sorry
+lemma dotAndSwap (P Q R : Prop) (hpq : P ∧ Q ∧ R) : Q ∧ P := by
+  apply And.intro
+  {exact hpq.right.left}
+  {exact hpq.left}
 
 /-
 ### Golf bonus (0 points).
