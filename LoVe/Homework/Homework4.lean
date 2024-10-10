@@ -515,16 +515,25 @@ def HList.hd {α αs} : HList (α :: αs) → α
 def HList.tl {α αs} : HList (α :: αs) → HList αs
   | HList.cons _ xs => xs
 
+def HList.fromList : (αs : List Type) → HList (columnwiseType αs)
+  | List.cons α αs => HList.cons List.nil (HList.fromList αs)
+  | List.nil => HList.nil
+
+def HList.prepend : ∀ {αs : List Type}, HList (columnwiseType αs) → HList αs
+  → HList (columnwiseType αs)
+  | List.cons α αs, HList.cons fstCol restCol, HList.cons fstCell restCel =>
+    let newFstCol := fstCol.cons fstCell
+    let newRestCol := restCol.prepend restCel
+    newRestCol.cons newFstCol
+  | [], HList.nil, HList.nil => H[]
+
 @[autogradedDef 2, validTactics #[rfl, simp [listHlistToHlistList]]]
 def listHlistToHlistList :
   ∀ {αs : List Type}, List (HList αs) → HList (columnwiseType αs)
-  | List.cons α αs', List.cons row rest =>
-    let columns := columnwiseType αs
-    let columns' := row.zipW
-    let table : HList (columnwiseType αs) := HList.cons
-  | List.nil, List.cons hd tl => sorry
-  | List.cons α αs', List.nil => sorry
-  | List.nil, List.nil => sorry
+  | List.cons α αs, List.cons row rest => (listHlistToHlistList rest).prepend row
+  | List.cons α αs, List.nil => HList.fromList (α :: αs)
+  | List.nil, List.cons row rest => H[]
+  | List.nil, List.nil => H[]
 
 
 /- But what about the other direction? We might be tempted to declare a function
