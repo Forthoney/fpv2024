@@ -219,20 +219,22 @@ then it is left-commutative. -/
   ∀ (f : α → α → α), Commutative f ∧ Associative f → LeftCommutative f := by
   intro f hf
   have hcomm : Commutative f := And.left hf
+  have hass : Associative f := And.right hf
 
   rw [LeftCommutative]
   intro a a' b
   let c := f a b
   have h1: f a' (f a b) = f (f a b) a' := by
-    have h1': f a' (f a b) = f a' c := rfl
-    have h1'': f (f a b) a' = f c a' := rfl
-    have h1''': f a' c = f c a' := hcomm a' c
     exact hcomm a' (f a b)
-  
+  have h2: f (f a b) a' = f a (f b a') := by
+    exact hass a b a'
+  have h3:f a (f a' b) = f a (f b a')  := by
+    exact congrArg (f a) (hcomm a' b)
+  apply Eq.trans h3
+  apply Eq.trans (Eq.symm h2)
+  apply Eq.trans (Eq.symm h1)
+  exact rfl
   done
-
-
-
 
 /-
 ### 2.2 (4 points).
@@ -252,16 +254,48 @@ Here are some helpful reminders for the proofs:
 * The `contradiction` tactic can prove any goal (including `False`) if you have
   an "obviously" impossible hypothesis in your context (e.g., `true = false`) -/
 
-def g : sorry := sorry
+def g : Bool → Bool → Bool := fun a b ↦ a = b ∨ b
 
-@[autogradedProof 1] theorem g_leftCommutative : LeftCommutative g :=
-  sorry
+@[autogradedProof 1] theorem g_leftCommutative : LeftCommutative g := by
+  intro a a' b
+  cases a with
+  | true =>
+    cases a' with
+    | true => rfl
+    | false =>
+      cases b with
+      | true => rfl
+      | false => rfl
+  | false =>
+    cases a' with
+    | true =>
+      cases b with
+      | true => rfl
+      | false => rfl
+    | false => rfl
+  done
 
-@[autogradedProof 1] theorem g_not_commutative : ¬Commutative g :=
-  sorry
+@[autogradedProof 1] theorem g_not_commutative : ¬Commutative g := by
+  intro h
+  have h1 : g true false := by exact h true false
+  have h2 : false = g false true := by exact h1
+  contradiction
+  done
 
-@[autogradedProof 1] theorem g_not_associative : ¬Associative g :=
-  sorry
+@[autogradedProof 1] theorem g_not_associative : ¬Associative g := by
+  intro h
+  rw [Associative] at h
+  have h1: g false (g true false) :=
+    have h1': g false false := rfl
+    have h1'': g false (g true false) = g false false := rfl
+    rfl
+  have h2: g (g false true) false = false :=
+    have h2': g false true := rfl
+    have h2'': g true false = g (g false true) false := rfl
+    rfl
+  contradiction
+  done
+
 
 /- Now that we've seen some properties of left-commutativity in the abstract,
 let's look at its significance in the context that motivated its definition in
@@ -287,11 +321,31 @@ def foldr {α β : Type} : (α → β → β) → β → List α → β
   | f, z, []        => z
   | f, z, (x :: xs) => f x (foldr f z xs)
 
+lemma lem {α β : Type}:
+  (g: α → β → β) →  LeftCommutative g → (z: β) → (hd: α) → (tl: List α) →
+  foldr g (g hd z) tl = g hd (foldr g z tl) := by
+  intro g hg z hd tl
+  induction tl with
+  | nil => rfl
+  | cons hd' tl' ih' =>
+    unfold foldr
+    rw[ih']
+    apply hg
+    done
+
 @[autogradedProof 3] theorem foldl_eq_foldr_of_leftCommutative {α β : Type} :
   ∀ (g : α → β → β) (hg : LeftCommutative g) (z : β) (xs : List α),
-  foldl g z xs = foldr g z xs :=
-  sorry
-
+  foldl g z xs = foldr g z xs := by
+  intro g hg z xs
+  induction xs generalizing z with
+  | nil => rfl
+  | cons hd tl ih =>
+    simp [foldl, foldr]
+    rw[ih]
+    apply lem
+    apply hg
+    -- foldr g (g hd z) tl = g tl.hd foldr g z tl.tl
+  done
 
 /-
 ### 2.4 (1 point).
@@ -303,12 +357,15 @@ equal left and right folds, then that function must be left-commutative. -/
 @[autogradedProof 1] theorem leftCommutative_of_foldl_eq_foldr {α β : Type} :
   ∀ (g : α → β → β),
     (∀ (z : β) (xs : List α), foldl g z xs = foldr g z xs) →
-    LeftCommutative g :=
-  sorry
-
-
-
-
+    LeftCommutative g := by
+  intro g h
+  unfold LeftCommutative
+  intro a a' b
+  let lval := foldl g b [a, a']
+  let rval := foldr g b [a, a']
+  have hsame: lval = rval := by apply h
+  exact id (Eq.symm hsame)
+  done
 
 /- ## Question (7 points): Heterogeneous Lists
 
@@ -399,8 +456,9 @@ Write a function `HList.append` that appends two `HList`s together.
 You'll need to complete the type as well as implement the function! -/
 
 @[autogradedDef 1, validTactics #[rfl, simp [HList.append]]]
-def HList.append {αs βs : List Type} : HList αs → HList βs → sorry
-  := sorry
+def HList.append {αs βs : List Type} : HList αs → HList βs → HList (αs ++ βs)
+  | HList.nil, other => other
+  | HList.cons hd tl, other => HList.cons hd (HList.append tl other)
 
 
 /- Heterogeneous lists can be used in conjunction with traditional lists to
@@ -438,7 +496,7 @@ definition of a function below that maps `αs` to some `βs : List Type` such th
 
 @[autogradedDef 1, validTactics #[rfl, simp [columnwiseType]]]
 def columnwiseType (αs : List Type) : List Type :=
-  sorry
+  αs.map List
 
 /-
 ### 4.3 (2 points).
@@ -460,7 +518,14 @@ def HList.tl {α αs} : HList (α :: αs) → HList αs
 @[autogradedDef 2, validTactics #[rfl, simp [listHlistToHlistList]]]
 def listHlistToHlistList :
   ∀ {αs : List Type}, List (HList αs) → HList (columnwiseType αs)
-  := sorry
+  | List.cons α αs', List.cons row rest =>
+    let columns := columnwiseType αs
+    let columns' := row.zipW
+    let table : HList (columnwiseType αs) := HList.cons
+  | List.nil, List.cons hd tl => sorry
+  | List.cons α αs', List.nil => sorry
+  | List.nil, List.nil => sorry
+
 
 /- But what about the other direction? We might be tempted to declare a function
 that turns a collection of columns into a collection of rows. That function
