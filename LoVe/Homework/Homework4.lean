@@ -230,10 +230,7 @@ then it is left-commutative. -/
     exact hass a b a'
   have h3:f a (f a' b) = f a (f b a')  := by
     exact congrArg (f a) (hcomm a' b)
-  apply Eq.trans h3
-  apply Eq.trans (Eq.symm h2)
-  apply Eq.trans (Eq.symm h1)
-  exact rfl
+  simp [h1,h2,h3]
   done
 
 /-
@@ -555,7 +552,7 @@ def length_hllh : Prop :=
   ∀ (α β : Type) (t : HList (columnwiseType [α, β])),
   List.length (hlistListToListHlist t) = List.length (HList.hd t)
 
-
+#check HList [Empty, Empty]
 /-
 ### 4.4 (2 points).
 But, in fact, we cannot define a function with this behavior!
@@ -575,11 +572,33 @@ Hint 2: You may find `Empty.elim` helpful. -/
 def pickFromSingletonList {τ} : ∀ {xs : List τ}, List.length xs = 1 → τ
   | x :: _, _ => x
 
+lemma hlistNatEmptyFalse : HList [Nat, Empty] → False :=
+  assume t : HList [Nat, Empty]
+    match t with
+    | HList.cons n em =>
+      match em with
+      | HList.cons a _ => a.elim
+
+lemma lhlistLength0 : (l : List (HList [Nat, Empty])) → l.length = 0 := by
+  intro l
+  match l with
+  | [] => rfl
+  | List.cons hd _ => contradiction
+
 @[autogradedProof 2]
-theorem length_hllh_false : ¬ length_hllh :=
-  sorry
-
-
+theorem length_hllh_false : ¬ length_hllh := by
+  intro h
+  let t : HList (columnwiseType [Nat, Empty]) := H[[1], []]
+  let tlen := t.hd.length
+  let t'len := (hlistListToListHlist t).length
+  have hlendiff : tlen ≠ t'len := by
+    have htlen1: tlen = 1 := by tauto
+    have ht'len0 : t'len = 0 := by apply lhlistLength0
+    rw [htlen1, ht'len0]
+    exact Nat.one_ne_zero
+  have hlensame : t'len = tlen := h Nat Empty t
+  exact hlendiff hlensame.symm
+  done
 /-
 ### 4.5 (1 point).
 In fact, without using features of Lean we haven't yet seen,
@@ -592,7 +611,7 @@ order to create a function that inverts the row-column representation as we
 desire. -/
 
 /-
-Write your answer to part 5 here.
+
 -/
 
 
