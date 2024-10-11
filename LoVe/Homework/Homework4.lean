@@ -611,7 +611,15 @@ order to create a function that inverts the row-column representation as we
 desire. -/
 
 /-
-
+We can write the constant function that always returns an empty list of type
+`List (HList αs)`.
+This is the only possible type, because if `Empty ∈ αs`,
+there can be no elements in the resulting list whatsoever.
+Maybe we can specify that every "field" of the original HList must be of the
+same length. This way, we won't have misaligned tables like H[[1], [0]].
+Additionally, this also mitigates the problem of the `Empty` type since
+any HList that contains at least one `List Empty` must have all its fields
+as `List Empty`, in which case output being an empty list makes total sense.
 -/
 
 
