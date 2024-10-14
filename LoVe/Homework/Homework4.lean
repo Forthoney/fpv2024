@@ -364,7 +364,7 @@ equal left and right folds, then that function must be left-commutative. -/
   exact id (Eq.symm hsame)
   done
 
-/- ## Question (7 points): Heterogeneous Lists
+/- ## Question 3 (7 points): Heterogeneous Lists
 
 We've become familiar with `List`s, which contain multiple ordered values of the
 same type. But what if we want to store values of different types? Can this be
@@ -448,7 +448,7 @@ def HList.snoc {α : Type} {αs : List Type} : HList αs → α → HList (αs +
 
 /-
 
-### 4.1 (1 point).
+### 3.1 (1 point).
 Write a function `HList.append` that appends two `HList`s together.
 You'll need to complete the type as well as implement the function! -/
 
@@ -484,7 +484,7 @@ Since these representations are storing equivalent data, it would be useful to
 be able to convert between them. This conversion will be our focus for the rest
 of this question.
 
-### 4.2 (1 point).
+### 3.2 (1 point).
 Let `αs : List Type` represent the types stored in a given row of
 a table with row-wise representation of type `List (HList αs)`. Complete the
 definition of a function below that maps `αs` to some `βs : List Type` such that
@@ -496,7 +496,7 @@ def columnwiseType (αs : List Type) : List Type :=
   αs.map List
 
 /-
-### 4.3 (2 points).
+### 3.3 (2 points).
 Now that we can state its type, implement the function
 `listHlistToHlistList` that converts the row-wise representation of a table
 into a column-wise representation.
@@ -554,7 +554,7 @@ def length_hllh : Prop :=
 
 #check HList [Empty, Empty]
 /-
-### 4.4 (2 points).
+### 3.4 (2 points).
 But, in fact, we cannot define a function with this behavior!
 Prove that `length_hllh` is false. This shows that, regardless of how we try to
 implement a function `hlistListToListHlist`, it *cannot* have the property
@@ -600,7 +600,7 @@ theorem length_hllh_false : ¬ length_hllh := by
   exact hlendiff hlensame.symm
   done
 /-
-### 4.5 (1 point).
+### 3.5 (1 point).
 In fact, without using features of Lean we haven't yet seen,
 we can only write down one function with type
 `∀ {αs : List Type}, HList (columnwise_type αs) → List (HList αs)`,
