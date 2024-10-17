@@ -29,7 +29,8 @@ Lean definition below. The definition should distinguish two cases, like `Even`,
 and should not rely on `Even`. -/
 
 inductive Odd : ℕ → Prop
--- supply the missing cases here
+| one : Odd 1
+| add_two (k : ℕ) : Odd k → Odd (k + 2)
 
 /-
 ### 1.2 (1 point).
@@ -37,20 +38,20 @@ Give *proof terms* for the following propositions, based on
 your answer to question 2.1. -/
 
 @[autogradedProof 0.5] theorem Odd_3 :
-  Odd 3 :=
-  sorry
+  Odd 3 := Odd.one.add_two
 
 @[autogradedProof 0.5] theorem Odd_5 :
-  Odd 5 :=
-  sorry
+  Odd 5 := Odd_3.add_two
 
 /-
 ### 1.3 (1 point).
 Prove the following theorem by rule induction: -/
 
 @[autogradedProof 1] theorem Even_Odd {n : ℕ} (heven : Even n) :
-  Odd (n + 1) :=
-  sorry
+  Odd (n + 1) := by
+  induction heven with
+  | zero => apply Odd.one
+  | add_two k iheven ihodd => apply ihodd.add_two
 
 /-
 ### 1.4 (1 point).
@@ -59,9 +60,18 @@ Prove the following theorem using rule induction.
 Hint: Recall that `¬ a` is defined as `a → false`. -/
 
 @[autogradedProof 1] theorem Even_Not_Odd {n : ℕ} (heven : Even n) :
-  ¬ Odd n :=
-  sorry
-
+  ¬ Odd n := by
+  rw[Not]
+  intro hodd
+  induction hodd with
+  | one => contradiction
+  | add_two n' ih ih' =>
+    have hminus_two_even : Even (n' + 2) → Even n' := by
+      intro hnplus2
+      cases hnplus2 with
+      | add_two n' h' => exact h'
+    apply ih'
+    exact hminus_two_even heven
 
 infixl:50 " <+ " => List.Sublist
 
@@ -110,8 +120,9 @@ the `List` constructors in your solution. (Of note, this means that
 `List.Sublist` and the equality operator `=` are not allowed.) -/
 
 -- Fill this in:
-inductive IsIn {α : Type} : α → List α → Prop
-
+inductive IsIn {α : Type} : α → List α → Prop where
+| head (target : α) (li: List α) : IsIn target (target::li)
+| tail (target other : α) (li: List α) : IsIn target li → IsIn target (other::li)
 
 -- For the rest of this problem, we'll redefine the `∈` and `∉` notation to use
 -- your `IsIn` predicate instead of the default.
@@ -139,7 +150,10 @@ Note: you may not use the equality operator `=`, `List.append` (aka `++`), or
 Hint: you may find the `IsIn` (`∈`) predicate you defined above useful! -/
 
 -- Fill this in:
-inductive NoDuplicates {α : Type} : List α → Prop
+inductive NoDuplicates {α : Type} : List α → Prop where
+| nil : NoDuplicates []
+| recursive (el : α) (li : List α) : NoDuplicates li → el ∉ li → NoDuplicates (el::li)
+
 
 
 /-
@@ -160,10 +174,35 @@ inducting on, you may need to generalize your induction over that variable. -/
 axiom not_in_of_not_in_sublist {α : Type} {x : α} {xs ys : List α} :
   xs <+ ys → x ∉ ys → x ∉ xs
 
+lemma tail_no_dup {α : Type} {x : α} {xs : List α} :
+  NoDuplicates (x::xs) → NoDuplicates xs := by
+  intro h
+  cases h with
+  | recursive _ _ no_dup_xs _ =>  exact no_dup_xs
+
+lemma no_dup_nin (α : Type) {x : α} {xs : List α} :
+  NoDuplicates (x::xs) → x ∉ xs := by
+  intro h
+  cases h with
+  | recursive _ _ _ x_nin_xs => exact x_nin_xs
+
+
 @[autogradedProof 2]
 theorem noDuplicates_sublist_of_noDuplicates {α : Type} (xs ys : List α) :
-  NoDuplicates ys → xs <+ ys → NoDuplicates xs :=
-  sorry
+  NoDuplicates ys → xs <+ ys → NoDuplicates xs := by
+  intros no_dup_ys xs_sublist_of_ys
+  induction xs_sublist_of_ys with
+  | slnil => exact NoDuplicates.nil
+  | cons a rel ih  =>
+    apply ih
+    apply tail_no_dup no_dup_ys
+  | cons₂ a rel ih =>
+    apply NoDuplicates.recursive
+    apply ih
+    exact tail_no_dup no_dup_ys
+    apply not_in_of_not_in_sublist rel
+    apply no_dup_nin
+    exact no_dup_ys
 
 end NoDupSublists
 
