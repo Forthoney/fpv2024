@@ -222,7 +222,7 @@ seeing why this works, we've provided an annotated evaluation trace to guide
 your intutition. -/
 
 def appendToAll (xs ys : List String) : List String :=
-  List.foldl (λ acc y => List.map (λ x => x ++ y) acc) xs ys
+  (List.foldl (λ acc y => List.map (λ x => x ++ y) acc) xs) ys
 
 #eval appendToAll ["a", "b", "c"] ["1", "2", "3"]
 #eval appendToAll ["first: ", "second: "] ["CSCI", "1951", "X"]
@@ -268,18 +268,28 @@ for you to give the general idea of where the proof gets stuck and why it is
 that you can't make progress from there.
 -/
 
+def accum: List String → String → List String := (fun acc y => List.map (fun x => x ++ y) acc)
+
+lemma acc_keeps_length :
+  ∀ li: List String, ∀ s: String, (accum li s).length = li.length := by
+  sorry
+
 example : ∀ (xs ys : List String),
   List.length xs = List.length (appendToAll xs ys) :=
 by
   intros xs ys
   induction ys with
   | nil =>
-    sorry
+    exact rfl
   | cons y ys ih =>
+    rw[appendToAll]
+    rw[appendToAll] at ih
+    have op_keeps_length : ∀ xs ys: List String, List.foldl accum xs ys :=
+      sorry
     sorry
 
 /-
-WRITE YOUR ANSWER TO PART 1 HERE
+I can't argue that the operation keeps the list length constant across the inductive step
 -/
 
 /-! In this problem, we'll explore another approach to proving properties of
@@ -352,8 +362,19 @@ recursion!) -/
   ∀ (P : α → Prop) (f : α → β → α) (z : α) (xs : List β)
     (hinit : P z)
     (hpres : ∀ (acc : α) (x : β), P acc → P (f acc x)),
-    P (List.foldl f z xs) :=
-sorry
+    P (List.foldl f z xs) := by
+    intro P f z xs hinit hpres
+    induction xs generalizing z with
+    | nil =>
+      simp
+      exact hinit
+    | cons head tail ih =>
+      have h : List.foldl f z (head :: tail) = List.foldl f (f z head) tail := rfl
+      rw[h]
+      apply ih
+      apply hpres
+      exact hinit
+    done
 
 /-!
 ### 3.3 (2 points).
@@ -375,14 +396,17 @@ the lemma `List.length_map` useful.)
 theorem length_appendToAll : ∀ (xs ys : List String),
   List.length xs = List.length (appendToAll xs ys) :=
 λ xs ys => foldl_oneplace_invariant
-  sorry
-  sorry
-  sorry
-  sorry
+  (λ li => List.length xs = List.length li)
+  (λ acc y => List.map (λ x => x ++ y) acc)
+  xs
+  ys
   (by
-     sorry)
+     apply imp_forall_iff.mp (fun a x => a) xs
+     trivial)
   (by
-     sorry)
+     intro acc str ih
+     simp
+     exact ih)
 
 /-! While `foldl_oneplace_invariant` is useful, it's not quite powerful enough
 to prove the invariance of certain properties we might care about. We'll explore
@@ -409,7 +433,14 @@ Hint: if you're having trouble, try actually doing the proof using
 it goes wrong. (Make sure to comment out any scratch work before submitting.) -/
 
 /-
-Write your answer to part 4 here
+We cannot prove this with foldl_oneplace_invariant because
+the invariant paremetrically changes for every step.
+This is fine for appendToAll, because at each step, the result of folding
+holds the invariant set at the very start that the result is a length n list.
+
+But for reverse, the invariant changes according to how much of the list is left
+at each step.
+So, we wouldn't be able to provide an hpres.
 -/
 
 /-! To prove the desired property of `fold_reverse`, we'll need a more
@@ -436,8 +467,19 @@ We have stated this proof technique below. Prove its correctness.
     (hinit : P z xs)
     (hpres : ∀ (acc : α) (x : β) (xs' : List β),
                P acc (x :: xs') → P (f acc x) xs'),
-    P (List.foldl f z xs) [] :=
-sorry
+    P (List.foldl f z xs) [] := by
+    intro P f z xs hinit hpres
+    induction xs generalizing z with
+    | nil =>
+      simp
+      exact hinit
+    | cons head tail ih =>
+      have h : List.foldl f z (head :: tail) = List.foldl f (f z head) tail := rfl
+      rw[h]
+      apply ih
+      apply hpres
+      exact hinit
+    done
 
 /-!
 ### 3.6 (2 points).
@@ -466,12 +508,20 @@ value of type `τ x` is expected. -/
   ∀ (xs : List α), List.length xs = List.length (fold_reverse xs) :=
 λ (xs : List α) =>
   foldl_twoplace_invariant
-    sorry
-    sorry
-    sorry
-    sorry
-    (by sorry)
-    (by sorry)
+  (λ acc xs' => List.length xs = List.length acc + List.length xs')
+  (λ acc x => x :: acc)
+  []
+  xs
+  (by simp)
+  (by
+     intro acc x xs' h
+     simp
+     have hsame: (x::xs').length = 1 + xs'.length := by exact Nat.succ_eq_one_add xs'.length
+     rw[hsame] at h
+     have hsame : acc.length + 1 + xs'.length = acc.length + (1 + xs'.length) := by
+      exact Nat.add_assoc acc.length 1 xs'.length
+     rw[hsame]
+     exact h)
 
 
 
