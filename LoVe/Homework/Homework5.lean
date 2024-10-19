@@ -268,12 +268,6 @@ for you to give the general idea of where the proof gets stuck and why it is
 that you can't make progress from there.
 -/
 
-def accum: List String → String → List String := (fun acc y => List.map (fun x => x ++ y) acc)
-
-lemma acc_keeps_length :
-  ∀ li: List String, ∀ s: String, (accum li s).length = li.length := by
-  sorry
-
 example : ∀ (xs ys : List String),
   List.length xs = List.length (appendToAll xs ys) :=
 by
@@ -284,8 +278,8 @@ by
   | cons y ys ih =>
     rw[appendToAll]
     rw[appendToAll] at ih
-    have op_keeps_length : ∀ xs ys: List String, List.foldl accum xs ys :=
-      sorry
+    -- have op_keeps_length : ∀ xs ys: List String, List.foldl accum xs ys :=
+    --  sorry
     sorry
 
 /-
