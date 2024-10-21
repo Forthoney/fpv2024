@@ -50,7 +50,7 @@ the proof terms. -/
 
 theorem Even_4 :
   Even 4 :=
-  sorry
+  Even.add_two 2 (Even.add_two 0 Even.zero)
 
 /- Why cannot we simply define `Even` recursively? Indeed, why not? -/
 
@@ -110,6 +110,9 @@ inductive Step : Score → Score → Prop where
   | recv_adv_40   : Step Score.advRecv (40–40)
   | recv_adv_game : Step Score.advRecv Score.gameRecv
 
+
+#check Step (11–16) (15–3)
+
 infixr:45 " ↝ " => Step
 
 /- Note that while `Score.vs` allows arbitrary numbers as arguments, the
@@ -120,8 +123,9 @@ We can ask, and formally answer, questions such as: Can the score ever return to
 `0–0`? -/
 
 theorem no_Step_to_0_0 (s : Score) :
-  ¬ s ↝ 0–0 :=
-  sorry
+  ¬ s ↝ 0–0 := by
+    intro h
+    cases h
 
 
 /- ### Reflexive Transitive Closure
@@ -145,10 +149,42 @@ def starRec {α : Type} (R : α → α → Bool) :
   α → α → Bool :=
   sorry
 
+theorem s1 : Star Step (0–0) Score.gameServ := by
+  repeat
+    apply Star.trans
+    { apply Star.base
+      constructor }
+  apply Star.base
+  constructor
+  norm_num
 
+theorem s2 : Star Step (0–0) Score.gameServ := by
+  apply Star.trans
+  { apply Star.base
+    constructor }
+  { apply Star.trans
+    { apply Star.base
+      apply Step.recv_0_15 }
+    { apply Star.trans
+      { apply Star.base
+        constructor }
+      { apply Star.trans
+        { apply Star.base
+          constructor }
+        { apply Star.base
+          constructor
+          norm_num } } } }
 
-example : Star Step (0–0) Score.gameServ := by
-  sorry
+example : s1 = s2 := rfl
+
+-- proof irrelevance: this is what we have in Lean
+example (P : Prop) (p1 p2 : P) : p1 = p2 := rfl
+
+-- uniqueness of identity proofs
+example (α : Type) (a1 a2 : α) (p1 p2 : a1 = a2) : p1 = p2 := rfl
+
+-- non-definitional proof irrelevance
+example (P : Prop) (p1 p2 : P) : p1 = p2 := proof_irrel _ _
 
 /- ### A Nonexample
 
@@ -193,6 +229,7 @@ inductive False : Prop where
 inductive Eq {α : Type} : α → α → Prop where
   | refl : ∀a : α, Eq a a
 
+
 end logical_symbols
 
 #print And
@@ -214,13 +251,25 @@ rules (i.e., the constructors of the proof term). Thanks to the PAT principle,
 this works as expected. -/
 
 theorem mod_two_Eq_zero_of_Even (n : ℕ) (h : Even n) :
-  n % 2 = 0 :=
-  sorry
+  n % 2 = 0 := by
+    induction h with
+    | zero => rfl
+    | add_two k hk ih => simp [ih]
 
 theorem Not_Even_two_mul_add_one (m n : ℕ)
     (hm : m = 2 * n + 1) :
-  ¬ Even m :=
-  sorry
+  ¬ Even m := by
+    intro h
+    induction h generalizing n with
+    | zero => cases hm
+    | add_two k hk ih =>
+      apply ih (n - 1)
+      cases n with
+      | zero => simp at hm
+      | succ n =>
+        simp at hm
+        simp
+        linarith
 
 /- `linarith` proves goals involving linear arithmetic equalities or
 inequalities. "Linear" means it works only with `+` and `-`, not `*` and `/`
