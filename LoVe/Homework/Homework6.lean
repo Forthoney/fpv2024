@@ -46,7 +46,22 @@ Complete the following definition of a big-step semantics: -/
 inductive BigStep : Stmt × State → State → Prop
   | skip (s) :
     BigStep (Stmt.skip, s) s
--- enter the missing cases here
+  | assign (x a s) :
+    BigStep (Stmt.assign x a, s) (s[x ↦ a s])
+  | seq (S T s t u) (hS : BigStep (S, s) t)
+      (hT: BigStep (T, t) u) :
+    BigStep (S; T, s) u
+  | unless_false (B S s t) (hcond: ¬ B s)
+      (hbody : BigStep (S, s) t) :
+    BigStep (Stmt.unlessDo B S, s) t
+  | unless_true (B S s) (hcond: B s) :
+    BigStep (Stmt.unlessDo B S, s) s
+  | repeat_pos (n S s t u) (hn: n > 0)
+      (hbody : BigStep (S, s) t)
+      (hrest : BigStep (Stmt.repeat (n - 1) S, t) u):
+    BigStep (Stmt.repeat n S, s) u
+  | repeat_zero (n S s) (hn: n = 0) :
+    BigStep (Stmt.repeat n S, s) s
 
 infix:110 " ⟹ " => BigStep
 
@@ -55,8 +70,37 @@ Prove the following inversion rule for the big-step semantics of `unless`. -/
 
 @[autogradedProof 1]
 theorem BigStep_ite_iff {B S s t} :
-  (Stmt.unlessDo B S, s) ⟹ t ↔ (B s ∧ s = t) ∨ (¬ B s ∧ (S, s) ⟹ t) :=
-  sorry
+  (Stmt.unlessDo B S, s) ⟹ t ↔ (B s ∧ s = t) ∨ (¬ B s ∧ (S, s) ⟹ t) := by
+  apply Iff.intro
+  {
+    intro h
+    cases h with
+    | unless_true B' S' s' hcond =>
+        apply Or.inl
+        apply And.intro
+        exact hcond
+        rfl
+    | unless_false B' S' s' t' hcond hbody =>
+        apply Or.inr
+        apply And.intro
+        exact hcond
+        exact hbody
+  }
+  {
+    intro h
+    apply Or.elim h
+    {
+      intro hleft
+      rw[← (And.right hleft)]
+      exact BigStep.unless_true B S s hleft.left
+    }
+    {
+      intro hright
+      exact BigStep.unless_false B S s t hright.left hright.right
+    }
+  }
+  done
+
 
 /- ### 1.3 (2 points).
 Prove the following inversion rule for the big-step semantics of `repeat`. -/
@@ -65,8 +109,52 @@ Prove the following inversion rule for the big-step semantics of `repeat`. -/
 theorem BigStep_repeat_iff {n S s u} :
   (Stmt.repeat n S, s) ⟹ u ↔
   (n = 0 ∧ u = s)
-  ∨ (∃m t, n = m + 1 ∧ (S, s) ⟹ t ∧ (Stmt.repeat m S, t) ⟹ u) :=
-  sorry
+  ∨ (∃m t, n = m + 1 ∧ (S, s) ⟹ t ∧ (Stmt.repeat m S, t) ⟹ u) := by
+  apply Iff.intro
+  {
+    intro h
+    cases h with
+    | repeat_pos n' S' s' t' u' hn hbody hrest =>
+        apply Or.inr
+        apply Exists.intro (n - 1)
+        apply Exists.intro t'
+        apply And.intro
+        exact (Nat.sub_eq_iff_eq_add hn).mp rfl
+        apply And.intro
+        exact hbody
+        exact hrest
+    | repeat_zero n' S' s' hn =>
+        apply Or.inl
+        apply And.intro
+        exact hn
+        rfl
+  }
+  {
+    intro h
+    apply Or.elim h
+    {
+      intro hleft
+      rw[← (And.right hleft)]
+      exact BigStep.repeat_zero n S u hleft.left
+    }
+    {
+      intro hright
+      apply Exists.elim hright
+      intro n'
+      intro hright
+      apply Exists.elim hright
+      intro t
+      apply And.elim
+      intro hn_succ
+      have hnsucc' : n' = n - 1 := Nat.eq_sub_of_add_eq (id (Eq.symm hn_succ))
+
+      intro hstep
+      rw[hnsucc'] at hstep
+      have hnonzero : n > 0 := Nat.lt_of_sub_eq_succ hn_succ
+      exact BigStep.repeat_pos n S s t u hnonzero hstep.left hstep.right
+    }
+  }
+  done
 
 end Repeat
 
