@@ -216,10 +216,13 @@ inductive HasType : FnExp → FnType → Prop
   | arg :
     HasType arg argument
   | appZero {f x} :
-    HasType f (function 0) → HasType x argument → HasType (app f x) argument
+    HasType f (function 0) →
+    HasType x argument →
+    HasType (f.app x) argument
   | appSucc {f x n} :
-    HasType f (function (Nat.succ n)) → HasType x argument →
-    HasType (app f x) (function n)
+    HasType f (function (Nat.succ n)) →
+    HasType x argument →
+    HasType (f.app x) (function n)
 
 /- We define convenience notation for the `HasType` judgment, so we may write
 expressions like `arg ∶ argument` for `HasType arg argument`.
@@ -243,7 +246,20 @@ judgments are those specified by `HasType`.
 Here are some useful ASCII symbols: `–`, `⊢`. -/
 
 /-
-Write your response for part 1 here.
+–––––––––––––––––––––––––– fn 0    –––––––––––––––– arg
+⊢ fn0 : function 0                 ⊢ arg : argument
+––––––––––––––––––––––––––––––––––––––––––––––––––––– appZero fn0 arg
+⊢ fn0 arg : argument
+
+–––––––––––––––––––––––––– fn 3    –––––––––––––––– arg
+⊢ fn0 : function 3                 ⊢ arg : argument
+––––––––––––––––––––––––––––––––––––––––––––––––––––– appSucc fn3 arg 2
+⊢ fn3 arg : function 2
+
+
+⊢ fn3 arg : function 2           ⊢ fn0 arg : argument
+–––––––––––––––––––––––––––––––––––––––––––––––––––––– appSucc (fn3 arg) (fn0 arg) 1
+⊢ (fn3 arg) (fn0 arg) : function 1
 -/
 
 /- ### 2.2 (1 point).
@@ -257,8 +273,18 @@ of it, though, you should try writing the specific terms, either using `apply`
 or as a forward proof! -/
 
 @[autogradedProof 1]
-theorem tp_exercise : app (app (fn 3) arg) (app (fn 0) arg) ∶ sorry :=
-  sorry
+theorem tp_exercise : app (app (fn 3) arg) (app (fn 0) arg) ∶ function 1 := by
+  apply HasType.appSucc
+  {
+    apply HasType.appSucc
+    exact HasType.fn
+    exact HasType.arg
+  }
+  {
+    apply HasType.appZero
+    exact HasType.fn
+    exact HasType.arg
+  }
 
 /- Next, we define our language's dynamics. Because we are defining a functional
 language, our small-step semantics specifies transitions between *expressions*,
@@ -313,8 +339,32 @@ Hint: We recommend proceeding by rule induction on the step judgment. -/
 
 @[autogradedProof 2]
 theorem preservation {e e' : FnExp} {τ : FnType} :
-  e ∶ τ → e ⇒ e' → e' ∶ τ :=
-  sorry
+  e ∶ τ → e ⇒ e' → e' ∶ τ := by
+  intro htype hstep
+  induction hstep generalizing τ with
+  | appArg step ih =>
+    cases htype with
+    | appZero fn0 x =>
+      apply HasType.appZero
+      apply ih
+      exact fn0
+      exact x
+    | appSucc fnn x =>
+      apply HasType.appSucc
+      apply ih
+      exact fnn
+      exact x
+  | appZero =>
+    cases htype with
+    | appZero fn0 x => exact x
+    | appSucc fnn x => cases fnn
+  | appSucc =>
+    cases htype with
+    | appZero fn0 x => cases fn0
+    | appSucc fnn x =>
+      cases fnn
+      exact HasType.fn
+  done
 
 /- Lastly, we prove progress. In order to do so, we need to define what a
 "fully-evaluated expression" is in our language. For this purpose, we define a
@@ -325,16 +375,65 @@ all values.) This definition enables us to state our progress theorem.
 
 ### 2.4 (2 points).
 
-Prove that progress holds for the `FnExp` language. -/
+Prove tha  sorry
+t progress holds for the `FnExp` language. -/
 
 inductive Value : FnExp → Prop
   | fn {n} : Value (fn n)
   | arg    : Value arg
 
+lemma fnn0 (n m : ℕ) : fn n ∶ function m → n = m := by
+  intro a
+  cases a with
+  | fn => rfl
+
 @[autogradedProof 2]
 theorem progress {e : FnExp} {τ : FnType} :
-  e ∶ τ → Value e ∨ ∃ e', e ⇒ e' :=
-  sorry
+  e ∶ τ → Value e ∨ ∃ e', e ⇒ e' := by
+  intro htype
+  induction htype with
+  | fn =>
+    apply Or.inl
+    exact Value.fn
+  | arg =>
+    apply Or.inl
+    exact Value.arg
+  | @appZero f x hf hx ihf ihx =>
+    cases ihf with
+    | inl h =>
+      cases h with
+      | @fn n =>
+        have n0 : n = 0 := by exact fnn0 n 0 hf
+        rw[n0]
+        apply Or.inr
+        apply Exists.intro x
+        exact Step.appZero
+      | arg => cases hf
+    | inr h =>
+      apply h.elim
+      intro w h
+      apply Or.inr
+      apply Exists.intro (w.app x)
+      exact h.appArg
+  | @appSucc f x n hf hx ihf ihx =>
+    cases ihf with
+    | inl h =>
+      cases h with
+      | @fn n' =>
+        have hn' : n' = n.succ := by exact fnn0 n' n.succ hf
+        rw[hn']
+        apply Or.inr
+        apply Exists.intro (fn n)
+        exact Step.appSucc
+      | arg => cases hf
+    | inr h =>
+      apply h.elim
+      intro w h
+      apply Or.inr
+      apply Exists.intro (w.app x)
+      exact h.appArg
+  done
+
 
 /- ### 2.5 (3 points).
 
@@ -347,7 +446,26 @@ inductive BadStep : FnExp → FnExp → Prop
   | app_succ {x n} : BadStep (app (fn (Nat.succ n)) x) (fn n)
 
 
--- theorem negation_of_coherence_property : sorry := sorry
+-- I show that progress fails with bad step with a counterexample
+-- Specifically, I present a legal expression that fails to progress with BadStep
+-- I first show that it is legal by showing the expression HasType
+-- then proceed to show that it fails to satisfy progress
+theorem negation_of_coherence_property {e : FnExp} {τ : FnType} :
+  ∃ (e : FnExp) (τ : FnType), e ∶ τ ∧ (e ∶ τ → ¬(Value e ∨ ∃ e', BadStep e e')) := by
+  apply Exists.intro (app (app (fn 3) arg) (app (fn 0) arg))
+  apply Exists.intro (function 1)
+  apply And.intro
+  exact tp_exercise
+  intro htype
+  rw[Not]
+  intro hfalse
+  cases hfalse with
+  | inl h => cases h
+  | inr h =>
+    cases h with
+    | intro w h =>
+      cases h
+  done
 
 end FnExp
 
