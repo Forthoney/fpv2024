@@ -61,10 +61,30 @@ section
 open Quad
 
 def K₄_quad_lg : ListGraph Quad :=
-  sorry
+  {
+    edges:= [
+      (one, two),
+      (one, three),
+      (one, four),
+      (two, one),
+      (two, three),
+      (two, four),
+      (three, one),
+      (three, two),
+      (three, four),
+      (four, one),
+      (four, two),
+      (four, three)
+    ]
+  }
+
 
 def K₄_quad_pg : PredGraph Quad :=
-  sorry
+  {
+    adj := λ v v' => v ≠ v',
+    symm := λ ⦃v v'⦄ adj => id (Ne.symm adj),
+    loopless := λ v app_adj => app_adj rfl
+  }
 
 end
 
@@ -91,7 +111,7 @@ mathematically as ℤ/5ℤ.
 -/
 
 #check Fin
-#eval (4 : Fin 5) + 1
+#eval 5 - (0 : Fin 5)
 
 /- You also might be surprised that tactics like `linarith` don't work on
 `Fin 5`. Turns out that algorithm doesn't like it when `5 = 0`! If you end up
@@ -99,7 +119,25 @@ with a hypothesis `h : 0 = 1` or something like that, `cases h` may come in
 handy. -/
 
 def C₅ : PredGraph (Fin 5) :=
-  sorry
+  {
+    adj := λ v v' => v - v' = 1 ∨ v' - v = 1
+    symm := by
+      intro v v' h
+      apply h.elim
+      exact fun a => Or.inr a
+      exact fun a => Or.inl a
+    loopless := by
+      intro v h
+      have hzero : v - v = 0 := by
+        exact sub_eq_zero_of_eq rfl
+      apply Or.elim h
+      rw[hzero]
+      intro hcontra
+      cases hcontra
+      rw[hzero]
+      intro hcontra
+      cases hcontra
+  }
 
 
 
@@ -111,7 +149,25 @@ generalize the above cycle graph to make an arbitrarily large cycle. Fill in the
 following definition, mirroring your previous definition. -/
 
 def C₁₀₀ : PredGraph (Fin 100) :=
-  sorry
+  {
+    adj := λ v v' => v - v' = 1 ∨ v' - v = 1
+    symm := by
+      intro v v' h
+      apply h.elim
+      exact Or.inr
+      exact Or.inl
+    loopless := by
+      intro v h
+      have hzero : v - v = 0 := by
+        exact sub_eq_zero_of_eq rfl
+      apply Or.elim h
+      rw[hzero]
+      intro hcontra
+      cases hcontra
+      rw[hzero]
+      intro hcontra
+      cases hcontra
+  }
 
 /- Food for thought: how could we define `C₁₀₀` as a `ListGraph` without typing
 out 100 tuples? -/
@@ -202,11 +258,12 @@ and flips all the rest (convince yourself that all flips are of this form!).
 Hint: we strongly suggest you express both functions as closed-form formulas.
 Try to make your formulas as simple as possible. -/
 
-def C₅_rotate (n : Fin 5) : Fin 5 → Fin 5 :=
-  sorry
+def C₅_rotate (n : Fin 5) : Fin 5 → Fin 5 := λ v => v - n
 
-def C₅_flip (n : Fin 5) : Fin 5 → Fin 5 :=
-  sorry
+#eval (0 : Fin 5) - 2
+
+def C₅_flip (n : Fin 5) : Fin 5 → Fin 5 := λ v => n + n - v
+
 
 /-
 ### 2α.2 (2 points).
@@ -216,13 +273,119 @@ Hint: If it seems like you aren't able to simplify complicated expressions in
 your proofs using tactics like `simp`, see if you can simplify your definitions
 of the automorphisms above. -/
 
-@[autogradedProof 1]
-theorem C₅_rotate_is_aut : ∀ n, IsGraphAutomorphism C₅ (C₅_rotate n) :=
-  sorry
+lemma C₅_shift : ∀ v v' n: Fin 5, C₅.adj v v' ↔ C₅.adj (v - n) (v' - n) := by
+  intro v v' n
+  apply Iff.intro
+  {
+    intro h
+    cases h with
+    | inl h =>
+      constructor
+      simp
+      assumption
+    | inr h =>
+      apply C₅.symm
+      constructor
+      simp
+      assumption
+  }
+  {
+    intro h
+    cases h with
+    | inl h =>
+      constructor
+      simp at h
+      assumption
+    | inr h =>
+      apply C₅.symm
+      constructor
+      simp at h
+      assumption
+  }
+
+lemma C₅_neg : ∀ v v' n: Fin 5, C₅.adj v v' ↔ C₅.adj (-v) (-v') := by
+  intro v v' n
+  apply Iff.intro
+  {
+    intro h
+    cases h with
+    | inl h =>
+      apply C₅.symm
+      constructor
+      simp
+      apply neg_add_eq_of_eq_add
+      exact Eq.symm (add_eq_of_eq_sub' (id (Eq.symm h)))
+    | inr h =>
+      constructor
+      simp
+      apply neg_add_eq_of_eq_add
+      exact Eq.symm (add_eq_of_eq_sub' (id (Eq.symm h)))
+  }
+  {
+    intro h
+    cases h with
+    | inl h =>
+      apply C₅.symm
+      constructor
+      simp at h
+      have h' : v' - v = -v + v' := sub_eq_neg_add v' v
+      apply Eq.trans h'
+      assumption
+    | inr h =>
+      simp at h
+      constructor
+      have h' : v - v' = -v' + v  := sub_eq_neg_add v v'
+      apply Eq.trans h'
+      assumption
+  }
+
 
 @[autogradedProof 1]
-theorem C₅_flip_is_aut : ∀ n, IsGraphAutomorphism C₅ (C₅_flip n) :=
-  sorry
+theorem C₅_rotate_is_aut : ∀ n, IsGraphAutomorphism C₅ (C₅_rotate n) := by
+  intro n
+  rw[IsGraphAutomorphism]
+  intro v v'
+  apply Iff.intro
+  {
+    intro h
+    exact (C₅_shift v v' n).mp h
+  }
+  {
+    intro h
+    exact (C₅_shift v v' n).mpr h
+  }
+
+@[autogradedProof 1]
+theorem C₅_flip_is_aut : ∀ n, IsGraphAutomorphism C₅ (C₅_flip n) := by
+  intro n
+  rw[IsGraphAutomorphism]
+  intro v v'
+  simp[C₅_flip]
+  apply Iff.intro
+  {
+    intro h
+    apply (C₅_shift (n + n - v) (n + n - v') n).mpr
+    have hnpm : ∀ m : Fin 5, n + n - m - n = n - m := by
+      intro m
+      rw[sub_right_comm (n + n) m n]
+      simp
+    rw[(hnpm v), (hnpm v')]
+    apply (C₅_neg (n - v) (n - v') n).mpr
+    simp
+    exact (C₅_shift v v' n).mp h
+  }
+  {
+    intro h
+    apply (C₅_shift v v' n).mpr
+    apply (C₅_shift (v - n) (v' - n) n).mpr
+    apply (C₅_neg (v - n - n) (v' - n - n) n).mpr
+    have hneg: ∀ m : Fin 5, -(m - n - n) = n + n - m := by
+      intro m
+      simp
+      exact sub_sub_eq_add_sub n m n
+    rw[(hneg v), (hneg v')]
+    assumption
+  }
 
 /- Now we can define the elements of our structure! -/
 def C₅_rotate_aut (n : Fin 5) : GraphAutomorphism (Fin 5) C₅ := {
@@ -251,12 +414,17 @@ Hint for the lemma: `Iff.trans` might be handy!
 lemma aut_comp_aut {α : Type} (G : PredGraph α) (f g : α → α) :
   IsGraphAutomorphism G f →
   IsGraphAutomorphism G g →
-  IsGraphAutomorphism G (f ∘ g) :=
-  sorry
+  IsGraphAutomorphism G (f ∘ g) := by
+  intro hf hg
+  intro v v'
+  apply Iff.trans (hg v v') (hf (g v) (g v'))
 
 def aut_comp {α : Type} (G : PredGraph α) :
  GraphAutomorphism α G → GraphAutomorphism α G → GraphAutomorphism α G :=
-  sorry
+  λ a b => {
+    f := a.f ∘ b.f,
+    is_aut := aut_comp_aut G a.f b.f a.is_aut b.is_aut
+  }
 
 -- We define convenience notation for the composition operation on the
 -- automorphism group of `path₅`
@@ -273,14 +441,15 @@ arbitrary rotation? -/
 
 @[autogradedProof 1]
 lemma GraphAutomorphism.assoc :
-  ∀ (a b c : GraphAutomorphism (Fin 5) C₅), a ∘₅ b ∘₅ c = a ∘₅ (b ∘₅ c) :=
-  sorry
+  ∀ (a b c : GraphAutomorphism (Fin 5) C₅), a ∘₅ b ∘₅ c = a ∘₅ (b ∘₅ c) := by
+  intro a b c
+  rfl
 
 -- Note: You **do not** need to provide the `is_aut` field for the value you
 -- return; feel free to `sorry` that proof.
 def GraphAutomorphism.inv :
   GraphAutomorphism (Fin 5) C₅ → GraphAutomorphism (Fin 5) C₅ :=
-  sorry
+  λ a => a ∘₅ a ∘₅ a ∘₅ a ∘₅ a ∘₅ a ∘₅ a ∘₅ a ∘₅ a ∘₅ a
 
 /- You don't have to prove the rest, but if you did, you'd have a group! (If
 you've studied some group theory, see if you can identify which group this is.)
