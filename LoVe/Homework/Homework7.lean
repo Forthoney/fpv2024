@@ -1,6 +1,6 @@
 import AutograderLib
 import LoVe.LoVelib
-import Mathlib.Algebra.Group.Fin.Basic
+import Mathlib.Data.ZMod.Defs
 
 /- # FPV Homework 7: Mathematical Structures
 
