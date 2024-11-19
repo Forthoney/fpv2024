@@ -35,14 +35,12 @@ Provide the missing proof below. -/
 
 instance Multiset.Setoid (α : Type) [BEq α] : Setoid (List α) :=
 { r     := fun as bs ↦ ∀x, List.count x as = List.count x bs
-  iseqv :=
-    { refl  :=
-        sorry
-      symm  :=
-        sorry
-      trans :=
-        sorry
-    } }
+  iseqv := {
+      refl  := by aesop
+      symm  := by aesop
+      trans := by aesop
+    }
+}
 
 /- We can now define the type of multisets as the quotient over the
 relation `Multiset.Setoid`. -/
@@ -61,45 +59,106 @@ of elements are added; thus, `{2} ⊎ {2, 2} = {2, 2, 2}`.
 Fill in the `sorry` placeholders below to implement the basic multiset
 operations. -/
 
+theorem MultisetIff {α : Type} [BEq α] (as bs : List α) :
+  as ≈ bs ↔ ∀x, as.count x  = bs.count x := by rfl
+
 def Multiset.mk {α : Type} [BEq α] : List α → Multiset α :=
   Quotient.mk (Multiset.Setoid α)
 
 def Multiset.empty {α : Type} [BEq α] : Multiset α :=
-  sorry
+  Multiset.mk []
 
 def Multiset.singleton {α : Type} [BEq α] (a : α) : Multiset α :=
-  sorry
+  Multiset.mk [a]
+
+lemma List.appendCount {α : Type} [BEq α] (as bs : List α) (x : α) :
+  (as ++ bs).count x = as.count x + bs.count x := by aesop
+
+theorem appendPreservesEquiv {α : Type} [BEq α] {a₁ a₂ b₁ b₂ : List α} :
+  (a₁ ≈ a₂) → (b₁ ≈ b₂) → a₁ ++ b₁ ≈ a₂ ++ b₂ := by
+  intro aSimilar bSimilar
+  rw[MultisetIff]
+  intro x
+  simp[List.appendCount]
+  apply Mathlib.Tactic.Ring.add_congr (aSimilar x) (bSimilar x)
+  rfl
 
 def Multiset.union {α : Type} [BEq α] : Multiset α → Multiset α → Multiset α :=
   Quotient.lift₂
-  sorry
-  sorry
+  (λ a b ↦ mk (a ++ b))
+  (by
+    intro a₁ b₁ a₂ b₂
+    intro aEquiv bEquiv
+    simp
+    apply Quotient.sound
+    apply appendPreservesEquiv aEquiv bEquiv
+  )
 
 /-
 ### 1.3 (4 points).
 Prove that `Multiset.union` is commutative and associative
 and has `Multiset.empty` as identity element. -/
 
+lemma appendEquivComm {α : Type} [BEq α] {as bs : List α} :
+  as ++ bs ≈ bs ++ as := by
+  rw[MultisetIff]
+  intro x
+  simp[List.appendCount]
+  exact Nat.add_comm (as.count x) (bs.count x)
+
+lemma Multiset.union' {α : Type} [BEq α] (as bs : List α) (A B : Multiset α) :
+  mk as = A → mk bs = B → A.union B = mk (as ++ bs):= by
+  intro aMkA bMkB
+  rw[←aMkA, ←bMkB]
+  rfl
+
 @[autogradedProof 1]
 theorem Multiset.union_comm {α : Type} [BEq α] (A B : Multiset α) :
-  Multiset.union A B = Multiset.union B A :=
-  sorry
+  A.union B = B.union A := by
+  have aInner : ∃ a : List α, mk a = A := A.exists_rep
+  have bInner : ∃ b : List α, mk b = B := B.exists_rep
+  apply bInner.elim
+  apply aInner.elim
+  intro a aMkA b bMkB
+  rw[union' a b A B aMkA bMkB, union' b a B A bMkB aMkA]
+  apply Quotient.sound
+  exact appendEquivComm
 
 @[autogradedProof 1]
 theorem Multiset.union_assoc {α : Type} [BEq α] (A B C : Multiset α) :
   Multiset.union (Multiset.union A B) C =
-  Multiset.union A (Multiset.union B C) :=
-  sorry
+  Multiset.union A (Multiset.union B C) := by
+  have aInner : ∃ a : List α, mk a = A := A.exists_rep
+  have bInner : ∃ b : List α, mk b = B := B.exists_rep
+  have cInner : ∃ c : List α, mk c = C := C.exists_rep
+  apply cInner.elim
+  apply bInner.elim
+  apply aInner.elim
+  intro a aMkA b bMkB c cMkC
+  rw[union' a b A B, union' b c B C]
+  rw[union' (a ++ b) c, union' a (b ++ c)]
+  simp
+  repeat (first | assumption | rfl)
 
 @[autogradedProof 1]
 theorem Multiset.union_iden_left {α : Type} [BEq α] (A : Multiset α) :
-  Multiset.union Multiset.empty A = A :=
-  sorry
+  Multiset.union Multiset.empty A = A := by
+  have aInner : ∃ a : List α, mk a = A := A.exists_rep
+  apply aInner.elim
+  intro a aMkA
+  rw[union' [] a empty A]
+  simp
+  repeat (first | assumption | rfl)
 
 @[autogradedProof 1]
 theorem Multiset.union_iden_right {α : Type} [BEq α] (A : Multiset α) :
-  Multiset.union A Multiset.empty = A :=
-  sorry
+  Multiset.union A Multiset.empty = A := by
+  have aInner : ∃ a : List α, mk a = A := A.exists_rep
+  apply aInner.elim
+  intro a aMkA
+  rw[union' a [] A empty]
+  simp
+  repeat (first | assumption | rfl)
 
 
 /- ## Question 2 (3 points + 1 bonus point): Strict Positivity
@@ -151,8 +210,7 @@ Complete the definition below that produces a value of type
 `Empty` given a value of type `Self Empty`. -/
 
 @[autogradedProof 1] unsafe def empty_of_self_empty : Self Empty → Empty
-  := sorry
-
+  | Self.mk f => f (Self.mk f)
 /-
 ### 2.2 (1 point).
 Construct a value of type `Self Empty` below.
@@ -164,8 +222,7 @@ For an example of what is *not* allowed, try
 
 -/
 
-@[autogradedProof 1] unsafe def self_empty : Self Empty :=
-  sorry
+@[autogradedProof 1] unsafe def self_empty : Self Empty := Self.mk empty_of_self_empty
 
 /-
 ### 2.3 (1 point).
@@ -174,7 +231,7 @@ Use the preceding declarations to prove `False`.
 Hint: recall `Empty.elim`. -/
 
 @[autogradedProof 1] unsafe def uh_oh : False :=
-  sorry
+  (empty_of_self_empty (Self.mk empty_of_self_empty)).elim
 
 /-
 ### 2.4 (1 bonus point).
@@ -281,9 +338,15 @@ where `x ≈ y` if and only if `x` and `y` are both even or both odd.
 E.g. `0 ≈ 2`, `1 ≈ 5`, but `¬ 4 ≈ 5`. -/
 
 instance eqv : Setoid ℕ := {
-  r := sorry,
-  iseqv := sorry
+  r := λ a b ↦ Even a ↔ Even b,
+  iseqv := {
+    refl := by aesop
+    symm := by aesop
+    trans := by aesop
+  }
 }
+
+theorem eqvIff (a b : ℕ) : a ≈ b ↔ (Even a ↔ Even b) := by rfl
 
 
 /- Now we'll define the quotient of ℕ by this relation. There are two elements
@@ -294,12 +357,53 @@ def EONat := Quotient eqv
 def e : EONat := ⟦0⟧
 def o : EONat := ⟦1⟧
 
+def EONat.mk (n : ℕ) := Quotient.mk eqv n
+
+theorem EONat.plusTwo : ∀n, mk n = mk (n + 2) := by
+  intro n
+  apply Quotient.sound
+  rw[eqvIff]
+  apply Iff.intro
+  {
+    simp[Even]
+    intro x
+    intro evenN
+    apply Exists.intro (x + 1)
+    rw[evenN]
+    linarith
+  }
+  {
+    simp[Even]
+    intro x
+    intro evenNPlus
+    apply Exists.intro (x - 1)
+    have h : n = x + x - 2 := Nat.eq_sub_of_add_eq evenNPlus
+    rw[h]
+    ring_nf
+    exact Eq.symm (Nat.sub_one_mul x 2)
+  }
+
 /-
 ### 3.2 (2 points).
 Prove that these are the only two elements of `EONat`. -/
 @[autogradedProof 2]
-lemma e_or_o (x : EONat) : x = e ∨ x = o :=
-  sorry
+lemma e_or_o (x : EONat) : x = e ∨ x = o := by
+  have nExist : ∃ n, ⟦n⟧ = x := by exact x.exists_rep
+  apply nExist.elim
+  intro n nEqX
+  cases Nat.even_or_odd n
+  case inl h =>
+    apply Or.inl
+    rw[e, ←nEqX]
+    apply Quotient.sound
+    apply (eqvIff n 0).mpr
+    exact Nat.even_add.mp h
+  case inr h =>
+    apply Or.inr
+    rw[o, ←nEqX]
+    apply Quotient.sound
+    apply (eqvIff n 1).mpr
+    exact (iff_false_right Nat.not_even_one).mpr (Nat.odd_iff_not_even.mp h)
 
 /-
 ### 3.3 (2 points).
@@ -309,4 +413,20 @@ What does the "addition table" for `EONat` look like? That is, what are `e+e`,
 `o+o`, `e+o`, and `o+e`? State and prove two of these identities. -/
 
 def add : EONat → EONat → EONat :=
-  sorry
+  Quotient.lift₂
+  (λ a' b' ↦ EONat.mk (a' + b'))
+  (by
+    intro a₁ b₁ a₂ b₂
+    intro asimm bsimm
+    rw[eqvIff] at asimm bsimm
+    simp
+    apply Quotient.sound
+    apply (eqvIff (a₁ + b₁) (a₂ + b₂)).mpr
+    simp[Even] at asimm bsimm
+    simp[Even]
+    apply Iff.intro
+    {
+      intro ab₁
+      
+    }
+  )
