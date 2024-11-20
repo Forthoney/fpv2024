@@ -380,16 +380,14 @@ def dReal.add (α β: dReal) : dReal :=
       apply x_mem.choose_spec.left
       use y - p
       apply And.intro
-      {
-        have q_val : q = x - p := by
-          apply eq_sub_of_add_eq'
-          apply q_spec.right
-        have yp_less_q : y - p < q := by
-          rw[q_val]
-          exact sub_lt_sub_right x_less_y p
-        exact β.closed_upwards q (y - p) q_spec.left yp_less_q
-      }
-      {simp}
+      have q_val : q = x - p := by
+        apply eq_sub_of_add_eq'
+        apply q_spec.right
+      have yp_less_q : y - p < q := by
+        rw[q_val]
+        exact sub_lt_sub_right x_less_y p
+      exact β.closed_upwards q (y - p) q_spec.left yp_less_q
+      simp
     open_upwards := by
       intro x x_mem
       let p := x_mem.choose
@@ -423,6 +421,7 @@ def dReal.add (α β: dReal) : dReal :=
           exact q'_ex.choose_spec.right
   }
 
+instance Add : Add dReal := { add := dReal.add }
 
 -- los
 
@@ -438,8 +437,7 @@ Take these on for bonus points if you feel like it!
 -/
 
 -- define this:
-def dReal.negCut (a : dReal) : Set ℚ :=
-  sorry
+def dReal.negCut (a : dReal) : Set ℚ := {-x | x ∈ a.cut}
 
 -- you don't need to define this!
 def dReal.neg (a : dReal) : dReal := sorry
